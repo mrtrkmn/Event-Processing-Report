@@ -101,7 +101,9 @@
 %% Uncommenting
 %% the next command will enable that style.
 %%\citestyle{acmauthoryear}
-
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{lipsum}
 %%
 %% end of the preamble, start of the body of the document source.
 \begin{document}
@@ -126,27 +128,94 @@
 %% other information printed in the page headers. This command allows
 %% the author to define a more concise list
 %% of authors' names for this purpose.
-\renewcommand{\shortauthors}{Name 1, Name 2, Name 3}
+\renewcommand{\shortauthors}{Ahmet Turkmen}
 
 %%
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
 In this paper, demonstration of event processing on Kafka + KSQL streaming platform will be considered and discussed. The input data is around 356 MB and it is structured data. 
-Go programming language is used to parse and publish data to Kafka. 
-
+Go programming language is used to parse and publish data to Kafka instances. Kafka + KSQL environment is set with official Docker-compose file from Github.
 \end{abstract}
 
 \maketitle
 
-\section{Task 1}
-%TODO
-fill in your report here
+\section{Streaming Messages}
+
+In order to stream messages to Kafka cluster, there is a need of a producer which will read and send all data to Kafka cluster. The streaming part, the producer,  of the project completed with Go programming language. 
+The program creates the topic on Kafka cluster and pushes events on the given file directly to Kafka cluster. 
+
+\subsection{Kafka Setup}
+Initially, Confluent cloud\cite{confluent-cloud} trial version is used, however due to unreliable network connection on producer side and high latency on Cloud side, this approach is dismissed. 
+The main idea became to setup Kafka cluster along with ksqldb. It can be achieved by simple Docker Compose file provided by confluent repository on Github\cite{cp-all-in-one}
+Provided "docker-compose.yaml" file contains all required services (Zookeeper, ksqldb, ksqldb-ci, control-center, kafka and more) and additionally a web interface to easy access to topics and streams. Running instances can be observed through given Figure 1. 
+\begin{figure}[H]
+    \centerline{\includegraphics[scale=.4]{assets/running-docker-instances.png}}
+    \caption{Running Docker Instances}
+    \label{fig}
+\end{figure}
+Once all the containers are in running state, now streaming messages can start through Go program. 
+\subsection{Stream Events}
+The source of the events is a file which needs to be processed with a producer. Producer will read through the file and push them to Kafka cluster under given topic name. Figure 2 represents the source code which is responsible to stream data to created topic. 
+\begin{figure}[H]
+    \centerline{\includegraphics[scale=.4]{assets/producer-code.png}}
+    \caption{Source code for streaming messages}
+    \label{fig}
+\end{figure}
+The given events source file is scanned and pushed to topic with help of channels in Go programming language shown in Figure 2. The full source code of the project is accessible on Github\footnote{https://github.com/mrtrkmn/}
+
+\section{Filtering}
+
+Creating filters are done through ksqlDB, it is purpose built-in for stream processing applications\footnote{https://ksqldb.io/}. As events stream to a topic, it is possible to filter and stream filtered events to another topic based on conditions defined in the query. It is achievable through ksqlDB query in Kafka. 
+In order to filter messages received from a producer, a stream needs to set, it can be done with clarifying incoming message skeleton with fields\cite{create-stream}. 
+\begin{figure}[H]
+    \centerline{\includegraphics[scale=.3]{assets/create_stream_meetups.png}}
+    \caption{Creating a stream from a topic }
+    \label{fig}
+\end{figure}
+The query on Figure 3, creates a stream from a Kafka topic which is fed by a producer. As 
+"\textt{the-meetup-events}" topic fed by producer, stream  "\textt{meetup\_events\_stream}" consumes messages from the topic. The streams enables data to analyze, manipulate, transform and filter incoming messages from given topic. 
+\subsection{Country filtering}
+Kafka streams are straightforward to filter, in Figure 4, incoming messages filtered based on country information they include. 
+\begin{figure}[H]
+    \centerline{\includegraphics[scale=.3]{assets/filter_country_stream.png}}
+    \caption{Filter country from a stream }
+    \label{fig}
+\end{figure}
+
+New stream called \textt{country\_filtered} is created and it is saved as persistent query in ksqlDB. Persistent queries run and listen given topic to consume in background. 
+\subsection{City Filtering}
+In order to narrow down the search to Munich or München, two different streams are created from "\textt{meetup\_events\_stream}" stream as source. 
+\begin{figure}[H]
+    \centerline{\includegraphics[scale=.3]{assets/filter_munich_stream.png}}
+    \caption{Filter "Munich" city  }
+    \label{fig}
+\end{figure}
+
+\begin{figure}[H]
+    \centerline{\includegraphics[scale=.3]{assets/filter_munchen_stream.png}}
+    \caption{Filter "München" city }
+    \label{fig}
+\end{figure}
+
+Both streams, "\textt{city\_filtered\_munich}" and "\textt{city\_filtered\_muenchen}" are consuming messages by filtering from "\textt{country\_filtered}" stream. Overall stream flow of different stream connections is shown in Figure 7. 
+
+\begin{figure}[H]
+    \centerline{\includegraphics[scale=.2]{assets/stream_flow.png}}
+    \caption{Overall stream flow  }
+    \label{fig}
+\end{figure}
+
+
+
+\section{Conclusion}
+In this project, Kafka + ksqldb are used as main environment, provided events file processed with created producer. The messages are filtered with help of streams on ksqlDB. However, the environment used in this project is not fault tolerant, since replication count is limited to one due to local instance. Even though number of partitions is not limited to one, it is not fault tolerant. Since a problem on the instance may cause to lost all data due to replication count being one. Throughput, latency graphs along with topics view included in Appendix. The end to end average latency is higher at the beginning and decreases to a point where it continues linear. The latency can be minimized with batch processing of events however, it has not been implemented in this experiment. The throughput of the environment is affected by system's capabilities (CPU power) and processing method of the events. 
+
 
 
 % add bibliography
-%\bibliographystyle{ACM-Reference-Format}
-%\bibliography{sample-base}
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{bibliography}
 
 \end{document}
 \endinput
